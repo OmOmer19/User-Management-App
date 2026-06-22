@@ -22,6 +22,13 @@ function UsersPage() {
   })
   const [editingUserId, setEditingUserId] = useState(null)
   const [isEditing, setIsEditing] = useState(false)
+  const [showFilter, setShowFilter] = useState(false)
+  const [filters, setFilters] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    department: ''
+  })
   const [currentPage, setCurrentPage] = useState(1)
   const [usersPerPage, setUsersPerPage] = useState(10)
 
@@ -46,15 +53,39 @@ function UsersPage() {
     }
     fetchUsers()
   },[])
-
+   
+  // search + filter combined
   // function to filter users by name || email || department
   const filteredUsers = users.filter((user) => {
     const searchTerm = search.toLowerCase()
-    return(
-      user.name.toLowerCase().includes(searchTerm) ||
-      user.email.toLowerCase().includes(searchTerm)||
-      user.company?.name?.toLowerCase().includes(searchTerm)
-    )
+
+    const parts = user.name.split(" ")
+    const firstName = parts[0]
+    const lastName = parts[parts.length - 1]
+
+    // search match
+    const matchesSearch = user.name.toLowerCase().includes(searchTerm) ||
+                          user.email.toLowerCase().includes(searchTerm)||
+                          user.company?.name?.toLowerCase().includes(searchTerm)
+    
+    // filter panel match  - each filter is optional
+    const matchesFilter =  // first name filter
+                           (filters.firstName === '' ||
+                           firstName.toLowerCase().includes(filters.firstName.toLowerCase()))
+                           &&
+                           //lastname filter
+                           (filters.lastName === '' || 
+                            lastName.toLowerCase().includes(filters.lastName.toLowerCase()))
+                           &&
+                           //email filter
+                           (filters.email === '' ||
+                            user.email.toLowerCase().includes(filters.email.toLowerCase()))
+                            &&
+                           // department filter
+                           (filters.department === '' ||
+                            user.company?.name.toLowerCase().includes(filters.department.toLowerCase()))
+     
+    return matchesSearch && matchesFilter
   })
 
   //function to sorte users asc or desc
@@ -181,6 +212,16 @@ function UsersPage() {
       setEditingUserId(null)
   }
 
+  // function to reset filters
+  const resetFilters = () =>{
+    setFilters({
+        firstName: '',
+        lastName: '',
+        email: '',
+        department: ''
+      })
+  }
+
   return (
     <div className="min-h-screen bg-slate-50">
       <div className="max-w-7xl mx-auto px-4 py-8">
@@ -202,13 +243,55 @@ function UsersPage() {
             + Add User
           </button>
         </div>
+        {showFilter && (
+          <div className="mt-4 bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+            {/* filter grid */}
+            <div className='grid md:grid-cols-4 gap-3'>
+              <input placeholder='first name'
+                     value={filters.firstName}
+                     onChange={(e) => setFilters({...filters, firstName: e.target.value})}
+                     className="border rounded-lg px-3 py-2"
+               />
+               <input placeholder='last name'
+                     value={filters.lastName}
+                     onChange={(e) => setFilters({...filters, lastName: e.target.value})}
+                     className="border rounded-lg px-3 py-2"
+               />
+               <input placeholder='email'
+                     value={filters.email}
+                     onChange={(e) => setFilters({...filters, email: e.target.value})}
+                     className="border rounded-lg px-3 py-2"
+               />
+               <input placeholder='department'
+                     value={filters.department}
+                     onChange={(e) => setFilters({...filters, department: e.target.value})}
+                     className="border rounded-lg px-3 py-2"
+               />
+            </div>
+            {/* action buttons */}
+            <div className="flex justify-end gap-3 mt-4">
+              <button onClick={resetFilters}
+                      className='px-4 py-2 border rounded-lg'>
+                Clear
+              </button>
+              <button onClick={() => setShowFilter(false)}
+                      className="px-4 py-2 border rounded-lg"
+                >
+                Close
+              </button>
+            </div>
+          </div>
+        )}
         {/* dashboard action bar */}
         <div className="mt-6 bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
           <UserToolbar search={search}
                        setSearch={setSearch}
                        sortOrder={sortOrder}
                        setSortOrder={setSortOrder}
-                       onFilterClick={() => {}}
+                       onFilterClick={() => {
+                        // toggeling filter panel open/close
+                        setShowFilter(prev => !prev)
+                       }}
           />
         </div>
         {/* add user form */}
