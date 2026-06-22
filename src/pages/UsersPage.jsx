@@ -2,9 +2,12 @@
 import { useEffect, useState } from 'react'
 import { FiSearch } from 'react-icons/fi'
 import { getUsers, deleteUser, addUser, updateUser } from '../services/userService'
+import UserCard from '../components/UserCard'
+import UserToolbar from '../components/UserToolbar'
+import UserForm from '../components/UserForm'
 
 function UsersPage() {
-
+  // states
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -19,6 +22,8 @@ function UsersPage() {
   })
   const [editingUserId, setEditingUserId] = useState(null)
   const [isEditing, setIsEditing] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [usersPerPage, setUsersPerPage] = useState(10)
 
   // fetching users on page load
   useEffect(() => {
@@ -64,6 +69,23 @@ function UsersPage() {
       return nameB.localeCompare(nameA)
     }
   })
+
+  // pagination 
+  // last index of curr page
+  const indexOfLastUser = currentPage * usersPerPage
+  // first index of curr
+  const indexOfFirstUser = indexOfLastUser - usersPerPage
+
+  // extracting only users for curr page
+  const paginatedUsers = sortedUsers.slice(indexOfFirstUser, indexOfLastUser)
+
+  // calculating total pages
+  const totalPages = Math.ceil(sortedUsers.length / usersPerPage)
+
+  // resetting page when filter or sort changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [search, sortOrder])
 
   // function to handle delete
   const handleDelete = async(id) => {
@@ -182,83 +204,52 @@ function UsersPage() {
         </div>
         {/* dashboard action bar */}
         <div className="mt-6 bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
-          {/* arranging search and action controls */}
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div className='relative w-full lg:max-w-lg'>
-              <FiSearch size={18} 
-              className='absolute left-4 top-1/2 -translate-y-1/2 text-slate-400'
-              />
-              <input type="text" placeholder='Search users by name, email or department...'
-                     value={search}
-                     onChange={(e) => setSearch(e.target.value)}
-                    className='w-full rounded-2xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-slate-700 outline-none transition-all 
-                    focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100'
-              />
-            </div>
-            <div className="flex flex-wrap gap-3">
-              <button className="rounded-xl border border-slate-300 px-4 py-3 font-medium text-slate-700 transition hover:bg-slate-100">
-                Filter
-              </button>
-              <button className="rounded-xl border border-slate-300 px-4 py-3 font-medium text-slate-700 transition hover:bg-slate-100"
-               onClick={() => setSortOrder(prev => (prev==='asc'? 'desc': 'asc'))}
-               >
-                Sort : {sortOrder === 'asc' ? 'A → Z' : 'Z → A'}
-              </button>
-            </div>
-          </div>
+          <UserToolbar search={search}
+                       setSearch={setSearch}
+                       sortOrder={sortOrder}
+                       setSortOrder={setSortOrder}
+                       onFilterClick={() => {}}
+          />
         </div>
         {/* add user form */}
         {showAddForm && (
           <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 className="text-xl font-semibold text-slate-900">
-              {isEditing ? 'Edit User' : 'Add User'}
-            </h2>
-            <div className="mt-5 grid gap-4 md:grid-cols-2">
-              <input type="text"
-                     placeholder='First Name'
-                     value={formData.firstName}
-                     onChange={(e) => setFormData({...formData, firstName: e.target.value})}
-                     className="rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-indigo-500"
-               />
-               <input type="text"
-                      placeholder='Last Name'
-                      value={formData.lastName}
-                      onChange={(e) => setFormData({...formData, lastName: e.target.value})}
-                      className="rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-indigo-500"
-               />
-               <input type="email" 
-                      placeholder='Email'
-                      value={formData.email}
-                      onChange={(e) => setFormData({...formData, email: e.target.value})}
-                      className="rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-indigo-500"
-               />
-               <input type="text"
-                      placeholder='Department'
-                      value={formData.department}
-                      onChange={(e) => setFormData({...formData, department: e.target.value})}
-                      className="rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-indigo-500"
-               />
-            </div>
-            <div className='mt-6 flex gap-3'>
-              <button  onClick={isEditing ? handleUpdateUser: handleAddUser}
-              className="rounded-xl bg-indigo-600 px-5 py-3 text-white hover:bg-indigo-700">
-                {isEditing ? 'Update User' : 'Save User'}
-              </button>
-              <button onClick={() =>{
-                resetForm()
-                setShowAddForm(false)
-              }}
-                      className="rounded-xl border border-slate-300 px-5 py-3" 
-                >
-                  Cancel
-              </button>
-            </div>
+            <UserForm 
+                showAddForm={showAddForm}
+                isEditing={isEditing}
+                formData={formData}
+                setFormData={setFormData}
+                handleAddUser={handleAddUser}
+                handleUpdateUser={handleUpdateUser}
+                resetForm={resetForm}
+                setShowAddForm={setShowAddForm}
+            />
           </div>
         )}
         {/* user count */}
         <p className="mt-6 text-sm text-slate-600">
           Total Users: {filteredUsers.length}
         </p>
+        {/* page size controller */}
+        <div className="mt-4 flex items-center gap-3">
+          <span className="text-sm text-slate-600">
+            Users per page:
+          </span>
+          <select value={usersPerPage}
+                  onChange={(e) => {
+                    //updatng page size and resetting page
+                    setUsersPerPage(Number(e.target.value))
+                    setCurrentPage(1)
+                  }}
+                  className="border rounded-lg px-3 py-1"
+            >
+            <option value={5}>5</option>
+            <option value={10}>10</option>
+            <option value={25}>25</option>
+            <option value={50}>50</option>
+            <option value={100}>100</option>
+          </select>
+        </div>
         {/* users section */}
         <div className='mt-8 rounded-3xl border border-slate-200 bg-white overflow-hidden'>
           <div className='border-b border-slate-200 px-6 py-5'>
@@ -302,76 +293,35 @@ function UsersPage() {
             {!loading && !error && sortedUsers.length > 0 && (
             <div className='grid gap-5 p-6 md:grid-cols-2 xl:grid-cols-3'>
               {/* user cards */}
-              {sortedUsers.map(user => {
-                const parts = user.name.split(" ")
-                const firstName = parts[0]
-                const lastName = parts[parts.length - 1]
-
-                const department = user.company?.name || 'N/A'
-
-                return(
-                  <div key={user.id}
-                       className='rounded-2xl border border-slate-200 p-5 
-                       transition-all hover:-translate-y-1 hover:shadow-lg'
-                  >
-                    {/* user header */}
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h3 className="text-lg font-semibold text-slate-900">
-                          {user.name}
-                        </h3>
-                        <p className="mt-1 text-sm text-slate-500">
-                          {user.email}
-                        </p>
-                      </div>
-                      <span className="rounded-lg bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
-                        #{user.id}
-                      </span>
-                    </div>
-                    {/* user details */}
-                    <div className="mt-5 space-y-3 text-sm">
-                      <div>
-                        <span className="font-medium text-slate-700">
-                          First Name:
-                        </span>{' '}
-                        <span className="text-slate-600">
-                          {firstName}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="font-medium text-slate-700">
-                          Last Name:
-                        </span>{' '}
-                        <span className="text-slate-600">
-                          {lastName}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="font-medium text-slate-700">
-                          Department:
-                        </span>{' '}
-                        <span className="text-slate-600">
-                          {department}
-                        </span>
-                      </div>
-                    </div>
-                    {/* user actions */}
-                    <div className="mt-6 flex gap-3">
-                      <button  onClick={() => handleEditUser(user)}
-                      className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
-                        Edit
-                      </button>
-                      <button  onClick={() => handleDelete(user.id)}
-                      className="rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50">
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                )
-              })}
+              {paginatedUsers.map(user => (
+                <UserCard key={user.id} user={user}
+                          onEdit={handleEditUser}
+                          onDelete={handleDelete}
+                />          
+              ))}
             </div>
             )}
-            
+            {/* pagination controls section */}
+            <div className="flex justify-center items-center gap-3 mt-6">
+              <button onClick={() => setCurrentPage(prev => prev - 1)}
+                      disabled={currentPage === 1}
+                      className="px-3 py-1 border rounded disabled:opacity-50"
+                >
+                Prev
+              </button>
+              {/* page info */}
+              <span className='text-sm text-slate-600'>
+                Page {currentPage} of {totalPages}
+              </span>
+              {/* next button */}
+              <button onClick={() => setCurrentPage(prev => prev + 1)}
+                      disabled={currentPage === totalPages}
+                      className="px-3 py-1 border rounded disabled:opacity-50"
+                >
+                Next
+              </button>
+            </div>
+
           </div>
         </div>
       </div>
